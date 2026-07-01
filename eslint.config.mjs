@@ -15,6 +15,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   prettier,
+  // any 허용 (AssistantTransport state 를 느슨하게 접근하는 ③b 패널 등)
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

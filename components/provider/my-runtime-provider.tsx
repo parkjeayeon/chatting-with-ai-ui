@@ -7,10 +7,13 @@ import {
   unstable_createMessageConverter as createMessageConverter,
   useAui,
   useAssistantTransportRuntime,
+  SimpleImageAttachmentAdapter,
+  CompositeAttachmentAdapter,
+  SimpleTextAttachmentAdapter,
 } from "@assistant-ui/react";
 import { convertLangChainMessages, type LangChainMessage } from "@assistant-ui/react-langgraph";
 import type { ReactNode } from "react";
-import toolkit from "./toolkit";
+import toolkit from "../../app/toolkit";
 import { DevToolsModal, createDevToolsPlugin } from "@assistant-ui/react-devtools";
 
 const stateTab = createDevToolsPlugin({
@@ -66,6 +69,12 @@ export function MyRuntimeProvider({ children }: MyRuntimeProviderProps) {
     headers: async () => ({
       "Test-Header": "test-value",
     }),
+    adapters: {
+      attachments: new CompositeAttachmentAdapter([
+        new SimpleImageAttachmentAdapter(),
+        new SimpleTextAttachmentAdapter(),
+      ]),
+    },
     body: {
       "Test-Body": "test-value",
     },

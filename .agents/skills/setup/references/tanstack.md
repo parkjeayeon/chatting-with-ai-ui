@@ -71,7 +71,7 @@ function App() {
 ## Runtime Provider
 
 ```tsx
-// src/components/MyRuntimeProvider.tsx
+// src/components/my-runtime-provider.tsx
 import { useState, type ReactNode } from "react";
 import {
   useExternalStoreRuntime,
