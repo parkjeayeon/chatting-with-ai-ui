@@ -1,7 +1,7 @@
 "use client";
 
 import { type PropsWithChildren, useEffect, useState, type FC } from "react";
-import { XIcon, PlusIcon } from "lucide-react";
+import { XIcon, PlusIcon, DownloadIcon } from "lucide-react";
 import {
   AttachmentPrimitive,
   ComposerPrimitive,
@@ -14,7 +14,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Dialog, DialogTitle, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { useLineCount } from "@/hooks/use-line-count";
+import { Button } from "@/components/ui/button";
+import { fileUrl } from "@/lib/api";
+import { useLineCount, countLines } from "@/hooks/use-line-count";
 import { useFileText } from "@/hooks/use-file-text";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +60,17 @@ const useAttachmentSrc = () => {
   return useFileSrc(file) ?? src;
 };
 
+// 문서 첨부의 텍스트 내용 (메시지 첨부는 File 이 없으므로 content 에서 읽음)
+const useAttachmentContentText = (): string | undefined =>
+  useAuiState(
+    (s) =>
+      (
+        s.attachment.content?.find((c) => c.type === "text") as
+          | { text?: string }
+          | undefined
+      )?.text,
+  );
+
 type AttachmentPreviewProps = {
   src: string;
 };
@@ -81,9 +94,14 @@ const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
 
 const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
   const src = useAttachmentSrc();
-  const { name, file } = useAuiState(
-    useShallow((s) => ({ name: s.attachment.name, file: s.attachment.file })),
+  const { name, type, file } = useAuiState(
+    useShallow((s) => ({
+      name: s.attachment.name,
+      type: s.attachment.type,
+      file: s.attachment.file,
+    })),
   );
+  const contentText = useAttachmentContentText();
 
   // 이미지 미리보기
   if (src) {
@@ -105,24 +123,82 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
     );
   }
 
-  // 문서(텍스트/마크다운) 미리보기 — 이미지가 아니고 File 이 있으면
-  if (file) {
+  // 문서(텍스트/마크다운) 미리보기 — type=document 이고 File 또는 content 텍스트가 있으면
+  if (type === "document" && (file || contentText)) {
     return (
-      <DocumentPreviewDialog name={name} file={file}>
+      <DocumentPreviewDialog name={name} file={file} fallbackText={contentText}>
         {children}
       </DocumentPreviewDialog>
     );
   }
 
-  return children;
+  // 그 외(zip 등 바이너리) — 미리보기 불가 + 다운로드
+  return (
+    <FilePreviewDialog name={name} file={file}>
+      {children}
+    </FilePreviewDialog>
+  );
 };
 
-type DocumentPreviewDialogProps = PropsWithChildren<{ name: string; file: File }>;
+const FilePreviewDialog: FC<PropsWithChildren<{ name: string; file?: File }>> = ({
+  name,
+  file,
+  children,
+}) => {
+  // 컴포저면 로컬 File, 전송된 메시지면 서버(/files/{id})로 다운로드
+  const id = useAuiState((s) => s.attachment.id);
+  const localHref = useFileSrc(file);
+  const href = localHref ?? (id ? fileUrl(id) : undefined);
 
-const DocumentPreviewDialog: FC<DocumentPreviewDialogProps> = ({ name, file, children }) => {
-  const text = useFileText(file);
-  const lineCount =
-    text == null ? null : text.length === 0 ? 0 : text.replace(/\n$/, "").split("\n").length;
+  return (
+    <Dialog>
+      <DialogTrigger
+        className="aui-attachment-preview-trigger hover:bg-accent/50 cursor-pointer transition-colors"
+        asChild
+      >
+        {children}
+      </DialogTrigger>
+      <DialogContent className="aui-attachment-file-dialog-content sm:max-w-3xl">
+        <DialogTitle className="truncate text-lg font-semibold">{name}</DialogTitle>
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <p className="text-muted-foreground text-sm">
+            Preview isn&apos;t available for {name}
+            {file ? ` (${formatBytes(file.size)})` : ""}.
+          </p>
+          {href && (
+            <a href={href} download={name}>
+              <Button variant="secondary" className="gap-2">
+                <DownloadIcon className="size-4" />
+                Download
+              </Button>
+            </a>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+type DocumentPreviewDialogProps = PropsWithChildren<{
+  name: string;
+  file?: File;
+  fallbackText?: string;
+}>;
+
+const DocumentPreviewDialog: FC<DocumentPreviewDialogProps> = ({
+  name,
+  file,
+  fallbackText,
+  children,
+}) => {
+  const fileText = useFileText(file);
+  const text = fileText ?? fallbackText ?? null;
+  const lineCount = text == null ? null : countLines(text);
+  const sizeBytes = file
+    ? file.size
+    : text != null
+      ? new TextEncoder().encode(text).length
+      : null;
 
   return (
     <Dialog>
@@ -136,7 +212,7 @@ const DocumentPreviewDialog: FC<DocumentPreviewDialogProps> = ({ name, file, chi
         <div className="flex flex-col gap-1 px-6 pt-5 pb-3">
           <DialogTitle className="truncate text-lg font-semibold">{name}</DialogTitle>
           <div className="text-muted-foreground text-xs">
-            {formatBytes(file.size)}
+            {sizeBytes != null && formatBytes(sizeBytes)}
             {lineCount != null && ` · ${lineCount} lines`}
             {" · Formatting may be inconsistent from source"}
           </div>
@@ -153,10 +229,20 @@ const DocumentPreviewDialog: FC<DocumentPreviewDialogProps> = ({ name, file, chi
 
 const AttachmentThumb: FC = () => {
   const src = useAttachmentSrc();
-  const { name, file } = useAuiState(
-    useShallow((s) => ({ name: s.attachment.name, file: s.attachment.file })),
+  const { name, type, file } = useAuiState(
+    useShallow((s) => ({
+      name: s.attachment.name,
+      type: s.attachment.type,
+      file: s.attachment.file,
+    })),
   );
-  const lineCount = useLineCount(file);
+  // 라인 수는 텍스트 문서에만 (zip 등 바이너리는 세지 않음)
+  const isDoc = type === "document";
+  const contentText = useAttachmentContentText();
+  const fileLines = useLineCount(isDoc ? file : undefined);
+  const lineCount = isDoc
+    ? (fileLines ?? (contentText != null ? countLines(contentText) : null))
+    : null;
   const ext = name?.includes(".") ? name.split(".").pop()!.toUpperCase() : undefined;
 
   return (

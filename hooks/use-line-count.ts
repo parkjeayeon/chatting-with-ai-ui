@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 
-// 텍스트/마크다운 파일의 라인 수 (File 내용을 읽어 계산).
-// 마지막 개행은 라인으로 세지 않는다.
+// 텍스트의 라인 수 (마지막 개행은 세지 않음)
+export const countLines = (text: string) =>
+  text.length === 0 ? 0 : text.replace(/\n$/, "").split("\n").length;
+
+// File 을 읽어 라인 수 계산 (file 이 없으면 null)
 export const useLineCount = (file: File | undefined) => {
   const [lines, setLines] = useState<number | null>(null);
 
@@ -14,9 +17,7 @@ export const useLineCount = (file: File | undefined) => {
     file
       .text()
       .then((text) => {
-        if (cancelled) return;
-        const count = text.length === 0 ? 0 : text.replace(/\n$/, "").split("\n").length;
-        setLines(count);
+        if (!cancelled) setLines(countLines(text));
       })
       .catch(() => {});
     return () => {
