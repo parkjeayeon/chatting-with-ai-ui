@@ -21,7 +21,9 @@ import {
 } from "@/components/assistant-ui/tool-group";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { formatRelativeDate, formatFullDateTime } from "@/lib/format-date";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -484,20 +486,49 @@ const UserMessage: FC = () => {
 };
 
 const UserActionBar: FC = () => {
+  // user 메시지 작성 시각 (UserActionBar 는 user 메시지에서만 렌더됨)
+  const createdAt = useAuiState((s) => s.message.createdAt);
+
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
       autohide="not-last"
-      className="aui-user-action-bar-root flex flex-col items-end"
+      className="aui-user-action-bar-root flex flex-row items-center gap-1.5"
     >
-      <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
-          <PencilIcon />
+      {/* manus와 동일하게 branch tree가 아니라 flat list로 진행(수정 X)*/}
+      {/*<ActionBarPrimitive.Edit asChild>*/}
+      {/*  <TooltipIconButton tooltip="Edit" className="aui-user-action-edit">*/}
+      {/*    <PencilIcon />*/}
+      {/*  </TooltipIconButton>*/}
+      {/*</ActionBarPrimitive.Edit>*/}
+      <ActionBarPrimitive.Copy asChild>
+        <TooltipIconButton tooltip="Copy" className="aui-user-action-copy">
+          <CopyIcon />
         </TooltipIconButton>
-      </ActionBarPrimitive.Edit>
+      </ActionBarPrimitive.Copy>
+      <ToolTipCreatedAt createdAt={createdAt} />
     </ActionBarPrimitive.Root>
   );
 };
+
+function ToolTipCreatedAt({ createdAt }: { createdAt: Date }) {
+  if (!createdAt) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="text-muted-foreground cursor-default text-xs whitespace-nowrap">
+          {formatRelativeDate(createdAt)}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="bg-neutral-800 text-neutral-100 [&_svg]:bg-neutral-800 [&_svg]:fill-neutral-800"
+      >
+        {formatFullDateTime(createdAt)}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const EditComposer: FC = () => {
   return (

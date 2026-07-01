@@ -66,6 +66,9 @@ export function MyRuntimeProvider({ children }: MyRuntimeProviderProps) {
     },
     api: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8010/assistant",
     converter,
+    // ExternalStore 기반 런타임은 편집을 기본 미지원 → 명시적으로 켠다.
+    // 다만 일단은 manus와 동일하게 branch tree가 아니라 flat list로 진행(수정 X)
+    // capabilities: { edit: true },
     headers: async () => ({
       "Test-Header": "test-value",
     }),
