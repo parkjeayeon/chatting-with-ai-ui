@@ -22,8 +22,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/assistant
 ### Run
 
 ```bash
-npm install
-npm run dev
+corepack use pnpm@latest
+pnpm run dev
 ```
 
 The application will be available at [http://localhost:3000](http://localhost:3000).

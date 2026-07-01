@@ -8,12 +8,16 @@ import {
   useAui,
   useAssistantTransportRuntime,
 } from "@assistant-ui/react";
-import {
-  convertLangChainMessages,
-  type LangChainMessage,
-} from "@assistant-ui/react-langgraph";
+import { convertLangChainMessages, type LangChainMessage } from "@assistant-ui/react-langgraph";
 import type { ReactNode } from "react";
 import toolkit from "./toolkit";
+import { DevToolsModal, createDevToolsPlugin } from "@assistant-ui/react-devtools";
+
+const stateTab = createDevToolsPlugin({
+  id: "my-state",
+  label: "My state",
+  Component: ({ data }) => <pre>{JSON.stringify(data.state, null, 2)}</pre>,
+});
 
 type MyRuntimeProviderProps = {
   children: ReactNode;
@@ -23,14 +27,9 @@ type State = {
   messages: LangChainMessage[];
 };
 
-const LangChainMessageConverter = createMessageConverter(
-  convertLangChainMessages,
-);
+const LangChainMessageConverter = createMessageConverter(convertLangChainMessages);
 
-const converter = (
-  state: State,
-  connectionMetadata: AssistantTransportConnectionMetadata,
-) => {
+const converter = (state: State, connectionMetadata: AssistantTransportConnectionMetadata) => {
   const optimisticStateMessages = connectionMetadata.pendingCommands.map(
     (c): LangChainMessage[] => {
       if (c.type === "add-message") {
@@ -40,9 +39,7 @@ const converter = (
             content: [
               {
                 type: "text" as const,
-                text: c.message.parts
-                  .map((p) => (p.type === "text" ? p.text : ""))
-                  .join("\n"),
+                text: c.message.parts.map((p) => (p.type === "text" ? p.text : "")).join("\n"),
               },
             ],
           },
@@ -95,6 +92,7 @@ export function MyRuntimeProvider({ children }: MyRuntimeProviderProps) {
 
   return (
     <AssistantRuntimeProvider aui={aui} runtime={runtime}>
+      <DevToolsModal plugins={[stateTab]} />
       {children}
     </AssistantRuntimeProvider>
   );

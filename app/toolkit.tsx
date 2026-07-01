@@ -8,10 +8,7 @@ export default defineToolkit({
     description: "Get the current weather for a city",
     parameters: z.object({
       location: z.string().describe("The city to get weather for"),
-      unit: z
-        .enum(["celsius", "fahrenheit"])
-        .optional()
-        .describe("Temperature unit"),
+      unit: z.enum(["celsius", "fahrenheit"]).optional().describe("Temperature unit"),
     }),
     execute: async ({ location, unit = "celsius" }) => {
       "use client";
@@ -21,8 +18,7 @@ export default defineToolkit({
 
       const temp = Math.floor(Math.random() * 30) + 10;
       const conditions = ["sunny", "cloudy", "rainy", "partly cloudy"];
-      const condition =
-        conditions[Math.floor(Math.random() * conditions.length)];
+      const condition = conditions[Math.floor(Math.random() * conditions.length)];
 
       return {
         location,
